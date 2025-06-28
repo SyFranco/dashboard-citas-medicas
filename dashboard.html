@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Sistema de Citas Médicas</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .dashboard-toggle {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .toggle-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        
+        .toggle-btn.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .toggle-btn:not(.active) {
+            background-color: #e0e0e0;
+            color: #666;
+        }
+        
+        .dashboard {
+            display: none;
+        }
+        
+        .dashboard.active {
+            display: block;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .kpi-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .kpi-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        .kpi-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .kpi-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 20px 0;
+        }
+        
+        .agenda-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .agenda-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.3s;
+        }
+        
+        .agenda-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .agenda-time {
+            font-weight: bold;
+            color: #3498db;
+            min-width: 80px;
+        }
+        
+        .agenda-patient {
+            flex-grow: 1;
+            margin-left: 15px;
+        }
+        
+        .agenda-type {
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        
+        .tipo-presencial {
+            background-color: #e8f5e8;
+            color: #2e7d32;
+        }
+        
+        .tipo-virtual {
+            background-color: #e3f2fd;
+            color: #1565c0;
+        }
+        
+        .tipo-chequeo {
+            background-color: #fff3e0;
+            color: #ef6c00;
+        }
+        
+        .estado-realizada {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .estado-cancelada {
+            background-color: #f44336;
+            color: white;
+        }
+        
+        .estado-confirmada {
+            background-color: #2196F3;
+            color: white;
+        }
+        
+        .weekly-calendar {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .calendar-day {
+            text-align: center;
+            padding: 15px 5px;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            border: 2px solid #e9ecef;
+        }
+        
+        .calendar-day.active {
+            background-color: #3498db;
+            color: white;
+            border-color: #2980b9;
+        }
+        
+        .day-name {
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .day-number {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .day-citas {
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .calendar-day.active .day-citas {
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="dashboard-header">
+            <h1>Sistema de Gestión de Citas Médicas</h1>
+            <div class="dashboard-toggle">
+                <button class="toggle-btn active" onclick="showDashboard('estrategico')">Dashboard Estratégico</button>
+                <button class="toggle-btn" onclick="showDashboard('operacional')">Dashboard Operacional</button>
+            </div>
+        </div>
+
+        <!-- Dashboard Estratégico -->
+        <div id="estrategico" class="dashboard active">
+            <h2 style="margin-bottom: 20px; color: #2c3e50;">Dashboard Estratégico - Gerencia de Operaciones</h2>
+            
+            <div class="kpi-cards">
+                <div class="kpi-card">
+                    <div class="kpi-number">50</div>
+                    <div class="kpi-label">Total de Citas</div>
+                </div>
+                <div class="kpi-card" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                    <div class="kpi-number">66%</div>
+                    <div class="kpi-label">Citas Realizadas</div>
+                </div>
+                <div class="kpi-card" style="background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);">
+                    <div class="kpi-number">8.6</div>
+                    <div class="kpi-label">NPS Promedio</div>
+                </div>
+                <div class="kpi-card" style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);">
+                    <div class="kpi-number">4.4/5</div>
+                    <div class="kpi-label">CSAT Promedio</div>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-title">Estado General de Citas</div>
+                    <div class="chart-container">
+                        <canvas id="estadoCitasChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Rendimiento por Especialidad</div>
+                    <div class="chart-container">
+                        <canvas id="especialidadChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Volumen por Tipo de Cita</div>
+                    <div class="chart-container">
+                        <canvas id="tipoCitaChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Tendencia Mensual</div>
+                    <div class="chart-container">
+                        <canvas id="tendenciaChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Operacional -->
+        <div id="operacional" class="dashboard">
+            <h2 style="margin-bottom: 20px; color: #2c3e50;">Dashboard Operacional - Dr. Carlos Mendoza</h2>
+            
+            <div class="kpi-cards">
+                <div class="kpi-card">
+                    <div class="kpi-number">8</div>
+                    <div class="kpi-label">Citas Hoy</div>
+                </div>
+                <div class="kpi-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <div class="kpi-number">3</div>
+                    <div class="kpi-label">Pendientes</div>
+                </div>
+                <div class="kpi-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    <div class="kpi-number">5</div>
+                    <div class="kpi-label">Presenciales</div>
+                </div>
+                <div class="kpi-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    <div class="kpi-number">3</div>
+                    <div class="kpi-label">Virtuales</div>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <div class="card" style="grid-column: 1 / -1;">
+                    <div class="card-title">Agenda del Día - Dr. Carlos Mendoza</div>
+                    <div class="agenda-list" id="agendaList">
+                        <!-- La agenda se llenará con JavaScript -->
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Vista Semanal</div>
+                    <div class="weekly-calendar" id="weeklyCalendar">
+                        <!-- El calendario se llenará con JavaScript -->
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Distribución de Citas - Esta Semana</div>
+                    <div class="chart-container">
+                        <canvas id="distribucionSemanalChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Datos procesados de las citas
+        const citasData = {
+            totalCitas: 50,
+            realizadas: 33,
+            canceladas: 11,
+            noAsistio: 3,
+            confirmadas: 3,
+            npsPromedio: 8.6,
+            csatPromedio: 4.4,
+            especialidades: {
+                'Cardiología': { total: 15, canceladas: 2 },
+                'Dermatología': { total: 17, canceladas: 6 },
+                'Pediatría': { total: 18, canceladas: 2 }
+            },
+            tiposCita: {
+                'Presencial': 30,
+                'Virtual': 14,
+                'Chequeo': 6
+            },
+            tendenciaMensual: {
+                'Mayo': 15,
+                'Junio': 22,
+                'Julio': 13
+            }
+        };
+
+        // Función para cambiar entre dashboards
+        function showDashboard(tipo) {
+            document.querySelectorAll('.dashboard').forEach(d => d.classList.remove('active'));
+            document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+            
+            document.getElementById(tipo).classList.add('active');
+            event.target.classList.add('active');
+            
+            if (tipo === 'estrategico') {
+                initEstrategicoDashboard();
+            } else {
+                initOperacionalDashboard();
+            }
+        }
+
+        // Inicializar Dashboard Estratégico
+        function initEstrategicoDashboard() {
+            // Gráfico de estado de citas
+            const ctx1 = document.getElementById('estadoCitasChart').getContext('2d');
+            new Chart(ctx1, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Realizadas', 'Canceladas', 'No Asistió', 'Confirmadas'],
+                    datasets: [{
+                        data: [33, 11, 3, 3],
+                        backgroundColor: ['#4CAF50', '#FF9800', '#F44336', '#2196F3'],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // Gráfico de especialidades
+            const ctx2 = document.getElementById('especialidadChart').getContext('2d');
+            new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: ['Cardiología', 'Dermatología', 'Pediatría'],
+                    datasets: [{
+                        label: 'Total Citas',
+                        data: [15, 17, 18],
+                        backgroundColor: '#3498db',
+                        borderColor: '#2980b9',
+                        borderWidth: 1
+                    }, {
+                        label: 'Canceladas',
+                        data: [2, 6, 2],
+                        backgroundColor: '#e74c3c',
+                        borderColor: '#c0392b',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // Gráfico de tipos de cita
+            const ctx3 = document.getElementById('tipoCitaChart').getContext('2d');
+            new Chart(ctx3, {
+                type: 'horizontalBar',
+                data: {
+                    labels: ['Presencial', 'Virtual', 'Chequeo'],
+                    datasets: [{
+                        data: [30, 14, 6],
+                        backgroundColor: ['#2ecc71', '#3498db', '#f39c12'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+
+            // Gráfico de tendencia
+            const ctx4 = document.getElementById('tendenciaChart').getContext('2d');
+            new Chart(ctx4, {
+                type: 'line',
+                data: {
+                    labels: ['Mayo', 'Junio', 'Julio'],
+                    datasets: [{
+                        label: 'Citas Agendadas',
+                        data: [15, 22, 13],
+                        borderColor: '#9b59b6',
+                        backgroundColor: 'rgba(155, 89, 182, 0.2)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Inicializar Dashboard Operacional
+        function initOperacionalDashboard() {
+            // Generar agenda del día para Dr. Carlos Mendoza
+            const agendaHoy = [
+                { hora: '09:00', paciente: 'Elena Rojas', tipo: 'Presencial', estado: 'Confirmada' },
+                { hora: '09:45', paciente: 'Juan Alarcón', tipo: 'Virtual', estado: 'Confirmada' },
+                { hora: '10:30', paciente: 'Mateo Quispe', tipo: 'Presencial', estado: 'Confirmada' },
+                { hora: '11:00', paciente: 'Renato Paz', tipo: 'Virtual', estado: 'Realizada' },
+                { hora: '14:00', paciente: 'Daniela Mora', tipo: 'Virtual', estado: 'Realizada' },
+                { hora: '15:00', paciente: 'Samuel Vega', tipo: 'Presencial', estado: 'Realizada' },
+                { hora: '16:00', paciente: 'Jimena Ríos', tipo: 'Chequeo', estado: 'Realizada' },
+                { hora: '17:00', paciente: 'Adriana Soto', tipo: 'Presencial', estado: 'Realizada' }
+            ];
+
+            const agendaList = document.getElementById('agendaList');
+            agendaList.innerHTML = '';
+
+            agendaHoy.forEach(cita => {
+                const item = document.createElement('div');
+                item.className = 'agenda-item';
+                item.innerHTML = `
+                    <div class="agenda-time">${cita.hora}</div>
+                    <div class="agenda-patient">${cita.paciente}</div>
+                    <div class="agenda-type tipo-${cita.tipo.toLowerCase()}">${cita.tipo}</div>
+                    <div class="agenda-type estado-${cita.estado.toLowerCase()}">${cita.estado}</div>
+                `;
+                agendaList.appendChild(item);
+            });
+
+            // Generar calendario semanal
+            const dias = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+            const fechas = [28, 29, 30, 1, 2, 3, 4];
+            const citasPorDia = [8, 6, 5, 7, 4, 2, 0];
+
+            const weeklyCalendar = document.getElementById('weeklyCalendar');
+            weeklyCalendar.innerHTML = '';
+
+            dias.forEach((dia, index) => {
+                const dayElement = document.createElement('div');
+                dayElement.className = `calendar-day ${index === 0 ? 'active' : ''}`;
+                dayElement.innerHTML = `
+                    <div class="day-name">${dia}</div>
+                    <div class="day-number">${fechas[index]}</div>
+                    <div class="day-citas">${citasPorDia[index]} citas</div>
+                `;
+                weeklyCalendar.appendChild(dayElement);
+            });
+
+            // Gráfico de distribución semanal
+            const ctx = document.getElementById('distribucionSemanalChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'],
+                    datasets: [{
+                        label: 'Presencial',
+                        data: [5, 4, 3, 4, 2, 1, 0],
+                        backgroundColor: '#2ecc71'
+                    }, {
+                        label: 'Virtual',
+                        data: [2, 1, 1, 2, 1, 1, 0],
+                        backgroundColor: '#3498db'
+                    }, {
+                        label: 'Chequeo',
+                        data: [1, 1, 1, 1, 1, 0, 0],
+                        backgroundColor: '#f39c12'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            stacked: true
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Inicializar el dashboard estratégico por defecto
+        document.addEventListener('DOMContentLoaded', function() {
+            initEstrategicoDashboard();
+        });
+    </script>
+</body>
+</html>
